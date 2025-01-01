@@ -1,12 +1,24 @@
 <?php
-  
+
 /**
  * Defines a Filecache cache implementation.
  *
  * Use Directory as a bin and file as a cache file.
  */
 class FilecacheCache implements BackdropCacheInterface {
+
+  /**
+   * The cache bin where the cache object is stored.
+   *
+   * @param string
+   */
   protected $bin;
+
+  /**
+   * File cache directory
+   *
+   * @param string
+   */
   protected $directory;
 
   /**
@@ -19,17 +31,17 @@ class FilecacheCache implements BackdropCacheInterface {
       $bin = 'cache_' . $bin;
     }
     $this->bin = $bin;
-    
+
     $config = config('filecache.settings');
     $dir = $config->get('file_storage_dir') ? $config->get('file_storage_dir') : 'files/filecache';
-    
+
     $this->directory = $dir . '/' . $bin;
-    
+
     if (!function_exists('file_prepare_directory')) {
       require_once BACKDROP_ROOT . '/core/includes/file.inc';
     }
-    
-    if(!is_dir($this->directory) && !file_exists($this->directory)) {
+
+    if (!is_dir($this->directory) && !file_exists($this->directory)) {
       file_prepare_directory($this->directory, FILE_CREATE_DIRECTORY);
     }
   }
@@ -42,7 +54,14 @@ class FilecacheCache implements BackdropCacheInterface {
     if (file_exists($this->directory . '/' . $cid . '.php')) {
       include $this->directory . '/' . $cid . '.php';
       if (isset($cached_data)) {
-        return $this->prepareItem($cached_data);
+        $item = $this->prepareItem($cached_data);
+        if ($item) {
+          $item->cid = $cid;
+          if (is_file($cid . '.created')) {
+            $item->created = file_get_contents($cid . '.created');
+          }
+        }
+        return $item;
       }
     }
     return FALSE;
@@ -63,7 +82,7 @@ class FilecacheCache implements BackdropCacheInterface {
    */
   protected function prepareItem($cache) {
     $item = new stdClass();
-    if(!$item->data = unserialize($cache)){
+    if (!$item->data = @unserialize($cache)){
       return FALSE;
     }
     return $item;
@@ -75,8 +94,8 @@ class FilecacheCache implements BackdropCacheInterface {
   function getMultiple(array &$cids) {
     try {
       $cache = array();
-      foreach($cids as $cid) {
-        if($item = $this->get($cid)){
+      foreach ($cids as $cid) {
+        if ($item = $this->get($cid)){
           $cache[$cid] = $item;
         }
       }
@@ -87,7 +106,7 @@ class FilecacheCache implements BackdropCacheInterface {
       // If the Filecache is not available, cache requests should
       // return FALSE in order to allow exception handling to occur.
       return array();
-    }      
+    }
 
   }
   /**
@@ -105,14 +124,13 @@ class FilecacheCache implements BackdropCacheInterface {
       $data = '<?php $cached_data=\'' . str_replace("'", "\'", serialize($data)) . '\';';
       $filename = $this->directory . '/' . $cid . '.php';
 
-      if($expire === CACHE_PERMANENT) {
-        file_put_contents($filename, $data, LOCK_EX);
-        backdrop_chmod($filename);
-      } else {
-        file_put_contents($filename, $data, LOCK_EX);
-        backdrop_chmod($filename);
+      file_put_contents($filename, $data, LOCK_EX);
+      backdrop_chmod($filename);
+      file_put_contents($filename . '.created', REQUEST_TIME, LOCK_EX);
+      backdrop_chmod($filename . '.created');
+      if ($expire !== CACHE_PERMANENT) {
         file_put_contents($filename . '.expire', $expire, LOCK_EX);
-        backdrop_chmod($filename);
+        backdrop_chmod($filename . '.expire');
       }
     }
     catch (Exception $e) {
@@ -126,10 +144,13 @@ class FilecacheCache implements BackdropCacheInterface {
   function delete($cid) {
     $cid = $this->prepareCid($cid);
     $filename = $this->directory . '/' . $cid . '.php';
-    if(is_file($filename)) {
+    if (is_file($filename)) {
       unlink($filename);
     }
-    if(is_file($filename . '.expire')) {
+    if (is_file($filename . '.created')) {
+      unlink($filename . '.created');
+    }
+    if (is_file($filename . '.expire')) {
       unlink($filename . '.expire');
     }
   }
@@ -138,7 +159,7 @@ class FilecacheCache implements BackdropCacheInterface {
  * Implements BackdropCacheInterface::deleteMultiple().
  */
   function deleteMultiple(array $cids) {
-    foreach($cids as $cid) {
+    foreach ($cids as $cid) {
       $this->delete($cid);
     }
   }
@@ -151,7 +172,7 @@ class FilecacheCache implements BackdropCacheInterface {
       require_once BACKDROP_ROOT . '/core/includes/file.inc';
     }
     $expire_files = file_scan_directory($this->directory, '/^' . $prefix . '.*/');
-    foreach($expire_files as $file) {
+    foreach ($expire_files as $file) {
       unlink($file->uri);
     }
   }
@@ -171,20 +192,20 @@ class FilecacheCache implements BackdropCacheInterface {
     if(!is_dir($this->directory)){
       return;
     }
-    
+
     // Get current list of items.
     if (!function_exists('file_scan_directory')) {
       require_once BACKDROP_ROOT . '/core/includes/file.inc';
     }
     $expire_files = file_scan_directory($this->directory, '/*.expire$/');
-    foreach($expire_files as $file) {
+    foreach ($expire_files as $file) {
       $timestamp = file_get_contents($file->uri);
-      if($timestamp < REQUEST_TIME) {
+      if ($timestamp < REQUEST_TIME) {
         unlink($file->uri);
         unlink(substr($file->uri, 0, -7));
       }
     }
-    
+
   }
 
   /**
@@ -192,7 +213,7 @@ class FilecacheCache implements BackdropCacheInterface {
    */
   function isEmpty() {
     $this->garbageCollection();
-    
+
     $handle = opendir($this->directory);
     $empty = TRUE;
     while (false !== ($entry = readdir($handle))) {
