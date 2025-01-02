@@ -50,8 +50,8 @@ class FilecacheCache implements BackdropCacheInterface {
       file_prepare_directory($this->directory, FILE_CREATE_DIRECTORY);
     }
 
-    // Add htaccess private settings if it's in the public files.
-    if (!$private_path && backdrop_is_apache()) {
+    // Add htaccess private settings if it's not in the private path.
+    if (($dir != $private_path . '/filecache') && backdrop_is_apache()) {
       file_save_htaccess($this->directory, TRUE);
     }
   }
