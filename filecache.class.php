@@ -26,7 +26,7 @@ class FilecacheCache implements BackdropCacheInterface {
   /**
    * Prepare the directory
    */
-  function prepare_directory($bin) {
+  protected function prepare_directory() {
     // If private path exists, store it there, fallback to public files.
     $private_path = config_get('system.core', 'file_private_path');
     $public_path = config_get('system.core', 'file_public_path');
@@ -40,7 +40,7 @@ class FilecacheCache implements BackdropCacheInterface {
     $config = config('filecache.settings');
     $dir = $config->get('file_storage_dir') ? $config->get('file_storage_dir') : $default_location . '/filecache';
 
-    $this->directory = $dir . '/' . $bin;
+    $this->directory = $dir . '/' . $this->bin;
 
     if (!function_exists('file_prepare_directory')) {
       require_once BACKDROP_ROOT . '/core/includes/file.inc';
