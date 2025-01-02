@@ -1,5 +1,5 @@
 <?php
-  
+
 /**
  * Defines a Filecache cache implementation.
  *
@@ -19,18 +19,40 @@ class FilecacheCache implements BackdropCacheInterface {
       $bin = 'cache_' . $bin;
     }
     $this->bin = $bin;
-    
+
+    $this->prepare_directory($bin);
+  }
+
+  /**
+   * Prepare the directory
+   */
+  function prepare_directory($bin) {
+    // If private path exists, store it there, fallback to public files.
+    $private_path = config_get('system.core', 'file_private_path');
+    $public_path = config_get('system.core', 'file_public_path');
+    if ($private_path) {
+      $default_location = realpath($private_path);
+      if ($default_location === 0) {
+        $default_location = realpath($public_path);
+      }
+    }
+
     $config = config('filecache.settings');
-    $dir = $config->get('file_storage_dir') ? $config->get('file_storage_dir') : 'files/filecache';
-    
+    $dir = $config->get('file_storage_dir') ? $config->get('file_storage_dir') : $default_location . '/filecache';
+
     $this->directory = $dir . '/' . $bin;
-    
+
     if (!function_exists('file_prepare_directory')) {
       require_once BACKDROP_ROOT . '/core/includes/file.inc';
     }
-    
+
     if(!is_dir($this->directory) && !file_exists($this->directory)) {
       file_prepare_directory($this->directory, FILE_CREATE_DIRECTORY);
+    }
+
+    // Add htaccess private settings if it's in the public files.
+    if (!$private_path && backdrop_is_apache()) {
+      file_save_htaccess($this->directory, TRUE);
     }
   }
 
@@ -87,7 +109,7 @@ class FilecacheCache implements BackdropCacheInterface {
       // If the Filecache is not available, cache requests should
       // return FALSE in order to allow exception handling to occur.
       return array();
-    }      
+    }
 
   }
   /**
@@ -171,7 +193,7 @@ class FilecacheCache implements BackdropCacheInterface {
     if(!is_dir($this->directory)){
       return;
     }
-    
+
     // Get current list of items.
     if (!function_exists('file_scan_directory')) {
       require_once BACKDROP_ROOT . '/core/includes/file.inc';
@@ -184,7 +206,7 @@ class FilecacheCache implements BackdropCacheInterface {
         unlink(substr($file->uri, 0, -7));
       }
     }
-    
+
   }
 
   /**
@@ -192,7 +214,7 @@ class FilecacheCache implements BackdropCacheInterface {
    */
   function isEmpty() {
     $this->garbageCollection();
-    
+
     $handle = opendir($this->directory);
     $empty = TRUE;
     while (false !== ($entry = readdir($handle))) {
