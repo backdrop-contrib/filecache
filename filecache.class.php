@@ -32,9 +32,9 @@ class FilecacheCache implements BackdropCacheInterface {
     $public_path = config_get('system.core', 'file_public_path');
     if ($private_path) {
       $default_location = realpath($private_path);
-      if ($default_location === 0) {
-        $default_location = realpath($public_path);
-      }
+    }
+    if (empty($default_location)) {
+      $default_location = realpath($public_path);
     }
 
     $config = config('filecache.settings');
