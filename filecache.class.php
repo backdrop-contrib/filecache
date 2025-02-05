@@ -31,12 +31,16 @@ class FilecacheCache implements BackdropCacheInterface {
 
   /**
    * File storage directory
+   *
+   * @return string
+   *   The main file storage directory.
    */
   protected static function file_storage_directory() {
     if (empty(self::$file_storage_directory)) {
       // If private path exists, store it there, fallback to public files.
       $private_path = config_get('system.core', 'file_private_path');
       $public_path = config_get('system.core', 'file_public_path');
+      $default_location = 'files';
       if ($private_path) {
         $default_location = realpath($private_path);
       }
@@ -44,8 +48,21 @@ class FilecacheCache implements BackdropCacheInterface {
         $default_location = realpath($public_path);
       }
 
-      $config = config('filecache.settings');
-      self::$file_storage_directory = $config->get('file_storage_dir') ? $config->get('file_storage_dir') : $default_location . '/filecache';
+      $file_custom_directory = config_get('filecache.settings', 'file_storage_dir');
+      self::$file_storage_directory = $file_custom_directory ? $file_custom_directory : $default_location . '/filecache';
+
+      if (!function_exists('file_prepare_directory')) {
+        require_once BACKDROP_ROOT . '/core/includes/file.inc';
+      }
+
+      if (!is_dir(self::$file_storage_directory) && !file_exists(self::$file_storage_directory)) {
+        file_prepare_directory(self::$file_storage_directory, FILE_CREATE_DIRECTORY);
+      }
+
+      // Add htaccess private settings if it's not in the private path.
+      if ((self::$file_storage_directory != config_get('system.core', 'file_private_path') . '/filecache') && backdrop_is_apache()) {
+        file_save_htaccess(self::$file_storage_directory, TRUE);
+      }
     }
 
     return self::$file_storage_directory;
@@ -64,11 +81,6 @@ class FilecacheCache implements BackdropCacheInterface {
 
     if(!is_dir($this->directory) && !file_exists($this->directory)) {
       file_prepare_directory($this->directory, FILE_CREATE_DIRECTORY);
-    }
-
-    // Add htaccess private settings if it's not in the private path.
-    if (($dir != config_get('system.core', 'file_private_path') . '/filecache') && backdrop_is_apache()) {
-      file_save_htaccess($this->directory, TRUE);
     }
   }
 
