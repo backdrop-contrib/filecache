@@ -6,6 +6,12 @@
  * Use Directory as a bin and file as a cache file.
  */
 class FilecacheCache implements BackdropCacheInterface {
+
+  /**
+   * @var string|null
+   */
+  protected static $file_storage_directory;
+
   protected $bin;
   protected $directory;
 
@@ -24,22 +30,32 @@ class FilecacheCache implements BackdropCacheInterface {
   }
 
   /**
+   * File storage directory
+   */
+  protected static function file_storage_directory() {
+    if (empty(self::$file_storage_directory)) {
+      // If private path exists, store it there, fallback to public files.
+      $private_path = config_get('system.core', 'file_private_path');
+      $public_path = config_get('system.core', 'file_public_path');
+      if ($private_path) {
+        $default_location = realpath($private_path);
+      }
+      if (empty($default_location)) {
+        $default_location = realpath($public_path);
+      }
+
+      $config = config('filecache.settings');
+      self::$file_storage_directory = $config->get('file_storage_dir') ? $config->get('file_storage_dir') : $default_location . '/filecache';
+    }
+
+    return self::$file_storage_directory;
+  }
+
+  /**
    * Prepare the directory
    */
   protected function prepare_directory() {
-    // If private path exists, store it there, fallback to public files.
-    $private_path = config_get('system.core', 'file_private_path');
-    $public_path = config_get('system.core', 'file_public_path');
-    if ($private_path) {
-      $default_location = realpath($private_path);
-    }
-    if (empty($default_location)) {
-      $default_location = realpath($public_path);
-    }
-
-    $config = config('filecache.settings');
-    $dir = $config->get('file_storage_dir') ? $config->get('file_storage_dir') : $default_location . '/filecache';
-
+    $dir = self::file_storage_directory();
     $this->directory = $dir . '/' . $this->bin;
 
     if (!function_exists('file_prepare_directory')) {
@@ -51,7 +67,7 @@ class FilecacheCache implements BackdropCacheInterface {
     }
 
     // Add htaccess private settings if it's not in the private path.
-    if (($dir != $private_path . '/filecache') && backdrop_is_apache()) {
+    if (($dir != config_get('system.core', 'file_private_path') . '/filecache') && backdrop_is_apache()) {
       file_save_htaccess($this->directory, TRUE);
     }
   }
