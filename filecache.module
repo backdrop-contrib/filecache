@@ -2,5 +2,16 @@
 
 /**
  * @file
- * Will be updated latter, when managing functionality will be added.
+ * Will be updated later, when managing functionality will be added.
  */
+
+/**
+ * Implements hook_config_info().
+ */
+function filecache_config_info() {
+  $prefixes['filecache.settings'] = array(
+    'label' => t('File Cache settings'),
+    'group' => t('Configuration'),
+  );
+  return $prefixes;
+}

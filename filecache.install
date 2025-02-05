@@ -1,0 +1,16 @@
+<?php
+
+/**
+ * @file
+ */
+
+/**
+ * Create a settings file if it doesn't exist already.
+ */
+function filecache_update_1000() {
+  $config = config('filecache.settings');
+  if ($config->isNew()) {
+    $config->set('file_storage_dir', NULL);
+    $config->save();
+  }
+}

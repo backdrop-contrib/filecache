@@ -30,9 +30,11 @@ complete text.
 ---
 Maintainters:
 
-* Gor Martsen (https://github.com/Gormartsen)
+* [Herb v/d Dool](https://github.com/herbdool)
 
 ---
 Credits:
+
+Created by [Gor Martsen](https://github.com/Gormartsen).
 
 This module has been inspired by http://drupal.org/project/filecache but it is not Drupal 7 port. All code has been written based on cache.inc file and backdrop API.
