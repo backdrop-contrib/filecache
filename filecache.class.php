@@ -90,12 +90,34 @@ class FilecacheCache implements BackdropCacheInterface {
     }      
 
   }
+
   /**
-   * Implements BackdropCacheInterface::set().
+   * Normalizes a cache ID in order to comply with file naming limitations.
+   *
+   * There are many different file systems in use on web servers. In order to
+   * maximize compatibility we will use filenames that only include alphanumeric
+   * characters, hyphens and underscores.
+   *
+   * @param string $cid
+   *   The passed in cache ID.
+   *
+   * @return string
+   *   An cache ID consisting of alphanumeric characters, hyphens and
+   *   underscores.
    */
-  function prepareCid($cid) {
-    return str_replace("/", "-", $cid);
+  protected function prepareCid(string $cid): string {
+    // Replace some common characters to keep more filenames legible.
+    $cid = str_replace(array('/', '%', ':', '.', '=', '?', '@'), '-', $cid);
+
+    // Nothing to do if the ID is already valid.
+    $cid_uses_valid_characters = (bool) preg_match('/^[a-zA-Z0-9_-]+$/', $cid);
+    if ($cid_uses_valid_characters) {
+      return $cid;
+    }
+    // Return a hash of the original cache ID.
+    return backdrop_hash_base64($cid);
   }
+
   /**
    * Implements BackdropCacheInterface::set().
    */
