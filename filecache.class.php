@@ -200,7 +200,7 @@ abstract class FilecacheBaseCache implements BackdropCacheInterface {
       require_once BACKDROP_ROOT . '/core/includes/file.inc';
     }
 
-    $expire_files = file_scan_directory($this->directory, '/^' . $this->prepareCid($prefix) . '.*/');
+    $expire_files = file_scan_directory($this->directory, '/^' . preg_quote($this->prepareCid($prefix)) . '.*/');
 
     foreach ($expire_files as $file) {
       if (is_file($file->uri)) {
